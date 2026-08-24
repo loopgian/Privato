@@ -20,13 +20,15 @@ solo due cose configurate lato ambiente cloud.
 
 Su [claude.ai/code](https://claude.ai/code) apri le impostazioni del **cloud
 environment** e nel campo delle variabili d'ambiente (formato `.env`, una
-coppia `KEY=value` per riga) aggiungi:
+coppia `KEY=value` per riga) aggiungi **solo la API key**:
 
 ```
-ODOO_URL=https://tuazienda.odoo.com
-ODOO_DB=tuazienda
 ODOO_API_KEY=la-tua-api-key
 ```
+
+URL, database, utente e modalita' YOLO hanno gia' il default corretto dentro
+`.mcp.json`, quindi non serve ripeterli. Impostali solo per puntare a
+un'istanza diversa.
 
 Le variabili vengono copiate nella sessione **all'avvio**: se le modifichi,
 le sessioni gia' in corso mantengono i vecchi valori: va aperta una sessione
@@ -44,10 +46,13 @@ nuova.
 
 Il livello di rete di default e' **Trusted**, che consente solo i domini in
 allowlist (registri di pacchetti, GitHub): l'host Odoo **non** e' raggiungibile.
-Nelle impostazioni dell'ambiente scegli **Custom** e:
+Verificato: da una sessione cloud con impostazioni di default, una richiesta a
+`loopgroup.odoo.com` viene rifiutata dal proxy con `CONNECT tunnel failed,
+response 403`.
 
-- aggiungi il dominio Odoo, es. `tuazienda.odoo.com` (oppure
-  `*.tuazienda.com` per tutti i sottodomini);
+Nelle impostazioni dell'ambiente scegli quindi **Custom** e:
+
+- aggiungi il dominio Odoo: `loopgroup.odoo.com`;
 - lascia spuntato **"Also include default list of common package managers"**,
   altrimenti `uvx` non riesce a scaricare il pacchetto da PyPI.
 
@@ -76,7 +81,8 @@ claude mcp list
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-2. Copia il file di esempio e compila i valori:
+2. Copia il file di esempio e inserisci la API key (il resto ha gia' il
+   default corretto):
 
    ```bash
    cp .env.example .env
@@ -103,26 +109,46 @@ nella repo; finche' la cartella non e' fidata il server resta in
 
 - Un'istanza Odoo con XML-RPC abilitato.
 - **API key**: Odoo > Impostazioni > Il mio profilo > Sicurezza account >
-  Chiavi API.
-- Consigliato in produzione: il modulo
-  [`mcp_server`](https://apps.odoo.com/apps/modules/19.0/mcp_server) installato
-  su Odoo (Odoo 16+), che aggiunge il controllo dei permessi per modello.
-  Senza il modulo si puo' usare `ODOO_YOLO=read` (sola lettura, solo per test).
+  Chiavi API. E' l'unico segreto della configurazione.
+
+### Modalita' YOLO
+
+Il server MCP ha due modi di operare:
+
+- **Modalita' standard** (`ODOO_YOLO=off`): richiede il modulo
+  [`mcp_server`](https://apps.odoo.com/apps/modules/19.0/mcp_server)
+  installato su Odoo, che aggiunge il controllo dei permessi **per modello**
+  (decidi tu quali modelli sono leggibili e scrivibili via MCP).
+- **Modalita' YOLO**: parla direttamente con XML-RPC, senza il modulo.
+  - `read` — sola lettura;
+  - `true` — lettura **e scrittura**, senza nessun controllo per modello:
+    Claude puo' creare, modificare ed eliminare record ovunque i permessi
+    dell'utente Odoo lo consentano.
+
+Su **Odoo Online** (`*.odoo.com`, il nostro caso) non e' possibile installare
+moduli di terze parti, quindi la modalita' standard non e' disponibile e YOLO
+e' l'unica strada. Il default in `.mcp.json` e' `true`: se ti serve solo
+consultare i dati, imposta `ODOO_YOLO=read` — riduce parecchio il rischio di
+modifiche accidentali. La protezione vera resta comunque quella lato Odoo:
+usa un utente dedicato con i soli permessi necessari.
 
 ## Configurazione
 
-Le credenziali **non** stanno in `.mcp.json`: il file usa la sostituzione
-`${VAR}` di Claude Code e legge i valori dall'ambiente. `.env` e' in
+In `.mcp.json` stanno solo valori non sensibili (URL, database, utente), come
+default sovrascrivibili. La **API key non e' nel file**: viene letta
+dall'ambiente tramite la sostituzione `${VAR}` di Claude Code. `.env` e' in
 `.gitignore`.
 
-| Variabile | Obbligatoria | Descrizione |
+| Variabile | Obbligatoria | Default in `.mcp.json` |
 |---|---|---|
-| `ODOO_URL` | si | URL dell'istanza Odoo |
-| `ODOO_DB` | quasi sempre | Nome del database (obbligatorio se la lista database e' disabilitata, come su Odoo Online) |
-| `ODOO_API_KEY` | si* | API key Odoo |
-| `ODOO_USER` / `ODOO_PASSWORD` | si* | Alternativa alla API key |
+| `ODOO_API_KEY` | **si** | nessuno — va fornita dall'ambiente |
+| `ODOO_URL` | no | `https://loopgroup.odoo.com` |
+| `ODOO_DB` | no | `loopgroup` |
+| `ODOO_USER` | no | `info@loop-group.it` |
+| `ODOO_YOLO` | no | `true` (vedi [Modalita' YOLO](#modalita-yolo)) |
 
-*Serve `ODOO_API_KEY` **oppure** la coppia `ODOO_USER` + `ODOO_PASSWORD`.
+In alternativa alla API key si puo' usare `ODOO_USER` + `ODOO_PASSWORD`, ma
+la API key e' preferibile: e' revocabile singolarmente.
 
 La lista completa delle opzioni (limiti di paginazione, log, locale, transport
 HTTP) e' disponibile con:

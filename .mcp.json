@@ -4,9 +4,11 @@
       "command": "uvx",
       "args": ["mcp-server-odoo@0.7.1"],
       "env": {
-        "ODOO_URL": "${ODOO_URL}",
-        "ODOO_DB": "${ODOO_DB}",
-        "ODOO_API_KEY": "${ODOO_API_KEY}"
+        "ODOO_URL": "${ODOO_URL:-https://loopgroup.odoo.com}",
+        "ODOO_DB": "${ODOO_DB:-loopgroup}",
+        "ODOO_USER": "${ODOO_USER:-info@loop-group.it}",
+        "ODOO_API_KEY": "${ODOO_API_KEY}",
+        "ODOO_YOLO": "${ODOO_YOLO:-true}"
       }
     }
   }
