@@ -28,7 +28,8 @@ ODOO_API_KEY=la-tua-api-key
 
 URL, database, utente e modalita' YOLO hanno gia' il default corretto dentro
 `.mcp.json`, quindi non serve ripeterli. Impostali solo per puntare a
-un'istanza diversa.
+un'istanza diversa. Attenzione in particolare a `ODOO_YOLO`, che per default
+vale `true`: la scrittura e' abilitata (vedi [Modalita' YOLO](#modalita-yolo)).
 
 Le variabili vengono copiate nella sessione **all'avvio**: se le modifichi,
 le sessioni gia' in corso mantengono i vecchi valori: va aperta una sessione
@@ -70,6 +71,27 @@ script. In una sessione nuova, controlla con:
 ```bash
 claude mcp list
 ```
+
+Il server deve comparire come `✓ Connected`. Se resta pendente o assente, la
+causa quasi certa e' la `ODOO_API_KEY` mancante: le variabili vengono lette
+solo all'avvio, quindi dopo averla aggiunta serve una sessione **nuova**.
+
+#### Stato verificato
+
+Configurazione collaudata end-to-end il 2026-08-24 da una sessione cloud:
+
+| Controllo | Esito |
+|---|---|
+| Rete verso `loopgroup.odoo.com` | HTTP 200 — allowlist dell'ambiente gia' corretta |
+| Endpoint XML-RPC | `server_version` `19.0+e` |
+| `common.authenticate()` con la API key | `uid = 2` (`info@loop-group.it`) |
+| Lettura reale (`res.partner` / `search_count`) | 119 record |
+| Avvio di `uvx mcp-server-odoo@0.7.1` | `odoo-mcp-server` 1.29.0 |
+| Tool esposti | 9 |
+
+Con `ODOO_YOLO=true` i tool disponibili sono `search_records`, `get_record`,
+`list_models`, `list_resource_templates` e `aggregate_records` in lettura, piu'
+`create_record`, `update_record`, `delete_record` e `post_message` in scrittura.
 
 ---
 
@@ -127,10 +149,19 @@ Il server MCP ha due modi di operare:
 
 Su **Odoo Online** (`*.odoo.com`, il nostro caso) non e' possibile installare
 moduli di terze parti, quindi la modalita' standard non e' disponibile e YOLO
-e' l'unica strada. Il default in `.mcp.json` e' `true`: se ti serve solo
-consultare i dati, imposta `ODOO_YOLO=read` — riduce parecchio il rischio di
-modifiche accidentali. La protezione vera resta comunque quella lato Odoo:
-usa un utente dedicato con i soli permessi necessari.
+e' l'unica strada.
+
+**Modalita' scelta per questo progetto: `true`**, cioe' lettura e scrittura.
+Coincide con il default di `.mcp.json`, quindi non serve impostare `ODOO_YOLO`
+nell'ambiente. Se in futuro servisse il solo accesso in consultazione,
+`ODOO_YOLO=read` limita il server ai cinque tool di lettura.
+
+Cosa comporta questa scelta, detto chiaramente: la API key in uso e' quella di
+`info@loop-group.it`, l'utente amministratore (`uid 2`), quindi Claude puo'
+creare, modificare ed eliminare record su **tutto** il database, senza alcun
+controllo per modello. La protezione vera resta lato Odoo: per restringere il
+raggio d'azione, crea un utente dedicato con i soli permessi necessari e usa
+la sua API key al posto di questa.
 
 ## Configurazione
 
